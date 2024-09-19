@@ -24,6 +24,7 @@ function App() {
           <Route path="/register" element={<Registration />} />
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/eventform" element={<Event />} />
           <Route path="/volunteerHistory" element={<VolunteerHistory />} />
         </Routes>
       </div>
