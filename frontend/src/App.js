@@ -11,6 +11,7 @@ import Profile from "./components/Profile/Profile";
 import Event from "./components/EventForm/Event";
 import "./App.css";
 import VolunteerHistory from "./components/VolunteerHistory/volunteerHistory";
+import VolunteerMatch from "./components/VolunteerMatch/VolunteerMatch";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/eventform" element={<Event />} />
           <Route path="/volunteerHistory" element={<VolunteerHistory />} />
+          <Route path="/volunteerMatch" element={<VolunteerMatch />} />
         </Routes>
       </div>
     </Router>
