@@ -19,20 +19,22 @@ const ProfileSchema = Yup.object().shape({
 });
 
 const Profile = () => {
+  const dummyProfileData = {
+    fullName: "John Doe",
+    address1: "123 Main Street",
+    address2: "",
+    city: "Houston",
+    state: "TX",
+    zip: "77001",
+    skills: ["communication", "tech"],
+    availability: "09/20/2024",
+  };
+
   return (
     <div className={styles.profileContainer}>
       <h2>Manage Profile</h2>
       <Formik
-        initialValues={{
-          fullName: "",
-          address1: "",
-          address2: "",
-          city: "",
-          state: "",
-          zip: "",
-          skills: [],
-          availability: "",
-        }}
+        initialValues={dummyProfileData}
         validationSchema={ProfileSchema}
         onSubmit={(values) => {
           console.log("Profile Updated!", values);
@@ -155,8 +157,7 @@ const Profile = () => {
 
             <div>
               <label htmlFor="skills">Skills</label>
-              <Field as="select" name="skills">
-                <option value="">Select</option>
+              <Field as="select" name="skills" multiple>
                 <option value="organizing">Organizing</option>
                 <option value="communication">Communication</option>
                 <option value="tech">Tech</option>
@@ -168,7 +169,6 @@ const Profile = () => {
                 <option value="social media">Social Media</option>
                 <option value="graphic design">Graphic Design</option>
                 <option value="event planning">Event Planning</option>
-                {/* Add more skills */}
               </Field>
               <ErrorMessage
                 name="skills"

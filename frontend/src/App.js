@@ -18,7 +18,7 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Default route to redirect to Login */}
+          {/* Redirect to login page if no specific route is provided */}
           <Route path="/" element={<Navigate to="/login" />} />
 
           {/* Other routes */}
