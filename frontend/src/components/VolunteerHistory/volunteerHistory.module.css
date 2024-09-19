@@ -58,7 +58,7 @@ html, body {
     transform: translateY(-3px); 
 }
 
-.role, .date, .description {
+.information {
     font-size: 18px;
     color: #4a4a4a;
     margin: 5px 0;

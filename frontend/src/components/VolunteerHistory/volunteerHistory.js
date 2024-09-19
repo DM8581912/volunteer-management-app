@@ -3,19 +3,28 @@ import styles from "./volunteerHistory.module.css";
 
 const data = [
   {
-    date: "January 2024",
-    description: "Feed 100 homeless people.",
-    role: "Chogath"
+    eventName: "These are all dummy info",
+    description: "These are all dummy info",
+    location: "These are all dummy info",
+    requiredSkills: "Dummy info",
+    urgencey: "Dummy info",
+    date: "These are all dummy info",
   },
   {
-    date: "June 2028",
-    description: "Save 10 babies from a burning building.",
-    role: "Nami"
+    eventName: "Houston Marathon",
+    description: "gave water to runners",
+    location: "Houston, TX",
+    requiredSkills: "Water handing skills max lvl",
+    urgencey: "Urgent",
+    date: "January 2023",
   },
   {
-    date: "July 2023",
-    description: "Saved 80 animals from drowning.",
-    role: "Nidalee"
+    eventName: "These are all dummy info",
+    description: "These are all dummy info",
+    location: "These are all dummy info",
+    requiredSkills: "Dummy info",
+    urgencey: "Dummy info",
+    date: "These are all dummy info",
   }
 ];
 
@@ -36,9 +45,12 @@ const VolunteerHistory = () => {
           ) : (
             info.map((entry, index) => (
               <div key={index} className={styles.event}>
-                <p className={styles.role}><strong>Role:</strong> {entry.role}</p>
-                <p className={styles.date}><strong>Date:</strong> {entry.date}</p>
-                <p className={styles.description}><strong>Description:</strong> {entry.description}</p>
+                <p className={styles.information}><strong>Event:</strong> {entry.eventName}</p>
+                <p className={styles.information}><strong>Date:</strong> {entry.date}</p>
+                <p className={styles.information}><strong>Location:</strong> {entry.location}</p>
+                <p className={styles.information}><strong>Required Skills:</strong> {entry.requiredSkills}</p>
+                <p className={styles.information}><strong>Urgency:</strong> {entry.urgencey}</p>
+                <p className={styles.information}><strong>Description:</strong> {entry.description}</p>
               </div>
             ))
           )}
