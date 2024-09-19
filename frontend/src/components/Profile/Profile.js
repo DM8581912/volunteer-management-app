@@ -1,7 +1,7 @@
 import React from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
-import "./Profile.css";
+import styles from "./Profile.module.css";
 
 // Validation schema for the profile form
 const ProfileSchema = Yup.object().shape({
@@ -10,14 +10,17 @@ const ProfileSchema = Yup.object().shape({
   address2: Yup.string().max(100, "Max 100 characters"),
   city: Yup.string().max(100, "Max 100 characters").required("Required"),
   state: Yup.string().required("Required"),
-  zip: Yup.string().min(5, "Min 5 characters").max(9, "Max 9 characters").required("Required"),
+  zip: Yup.string()
+    .min(5, "Min 5 characters")
+    .max(9, "Max 9 characters")
+    .required("Required"),
   skills: Yup.array().min(1, "Select at least one skill").required("Required"),
   availability: Yup.string().required("Required"),
 });
 
 const Profile = () => {
   return (
-    <div className="profile-container">
+    <div className={styles.profileContainer}>
       <h2>Manage Profile</h2>
       <Formik
         initialValues={{
@@ -41,25 +44,41 @@ const Profile = () => {
             <div>
               <label htmlFor="fullName">Full Name</label>
               <Field type="text" name="fullName" />
-              <ErrorMessage name="fullName" component="div" className="error" />
+              <ErrorMessage
+                name="fullName"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
               <label htmlFor="address1">Address 1</label>
               <Field type="text" name="address1" />
-              <ErrorMessage name="address1" component="div" className="error" />
+              <ErrorMessage
+                name="address1"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
               <label htmlFor="address2">Address 2</label>
               <Field type="text" name="address2" />
-              <ErrorMessage name="address2" component="div" className="error" />
+              <ErrorMessage
+                name="address2"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
               <label htmlFor="city">City</label>
               <Field type="text" name="city" />
-              <ErrorMessage name="city" component="div" className="error" />
+              <ErrorMessage
+                name="city"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
@@ -117,13 +136,21 @@ const Profile = () => {
                 <option value="WI">Wisconsin</option>
                 <option value="WY">Wyoming</option>
               </Field>
-              <ErrorMessage name="state" component="div" className="error" />
+              <ErrorMessage
+                name="state"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
               <label htmlFor="zip">Zip Code</label>
               <Field type="text" name="zip" />
-              <ErrorMessage name="zip" component="div" className="error" />
+              <ErrorMessage
+                name="zip"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
@@ -143,13 +170,21 @@ const Profile = () => {
                 <option value="event planning">Event Planning</option>
                 {/* Add more skills */}
               </Field>
-              <ErrorMessage name="skills" component="div" className="error" />
+              <ErrorMessage
+                name="skills"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div>
               <label htmlFor="availability">Availability</label>
               <Field type="text" name="availability" placeholder="MM/DD/YYYY" />
-              <ErrorMessage name="availability" component="div" className="error" />
+              <ErrorMessage
+                name="availability"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <button type="submit" disabled={isSubmitting}>
