@@ -9,6 +9,7 @@
     "eject": "cd frontend && npm run eject"
   },
   "dependencies": {
+    "react-datepicker": "^7.3.0",
     "react-router-dom": "^6.26.2"
   }
 }
