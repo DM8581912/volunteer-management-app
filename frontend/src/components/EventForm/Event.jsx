@@ -14,7 +14,7 @@ const EventSchema = Yup.object().shape({
   eventName: Yup.string().min(100, "Event name must be at least 100 characters").required("Required"),
   eventDescription: Yup.string().required("You must enter a description"),
   location: Yup.string().required("You must enter a location"),
-  requiredSkills: Yup.array().min(1, 'At least one skill is required').required('Required'),
+  requiredSkills: Yup.string().required('One Skill is required'),
   urgency: Yup.string().required('Urgency is required'),
   eventDate: Yup.date().required('Event date is required'),
 });
@@ -22,12 +22,46 @@ const EventSchema = Yup.object().shape({
 const options = [
   { value: 'Carry over 50 lbs', label: 'Carry over 50 lbs' },
   { value: 'Run over 20 miles', label: 'Run over 50 miles' },
-]
+];
 
+const customStyles = {
+  control: (base, state) => ({
+    ...base,
+    height: 40,
+    fontSize: 14,
+    overflow: 'visible',
 
+  }),
+   multiValue: (base) => ({
+     ...base,
+     height: 30,
+     overflow: 'visible',
+
+  }),
+  multiValueLabel: (base) => ({
+   ...base,
+   overflow: 'visible',
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+};
 
 const Event = () => {
   const [startDate, setStartDate] = useState(new Date());
+
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [isValid, setIsValid] = useState(true);
+
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedOption) {
+      setIsValid(false); // Set validation error if no option is selected
+    } else {
+      setIsValid(true);
+      // Process the form
+      console.log('Selected:', selectedOption);
+    }
+  };
 
   return (
     <div className={styles.eventContainer}>
@@ -48,7 +82,7 @@ const Event = () => {
         }}
       >
         {({setFieldValue, isSubmitting }) => (
-          <Form>
+          <Form onSubmit={handleSubmit}>
             <div>
               <label htmlFor="eventName">Event Name</label>
               <Field type="text" name="eventName" />
@@ -66,30 +100,18 @@ const Event = () => {
             </div>
 
             {/* Multi-select for Required Skills */}
-            {/* <div>
-              <label htmlFor="requiredSkills">Required Skills</label>
-              <Field name="requiredSkills">
-                {({ field, form }) => (
-                  <select
-                    {...field}
-                    name="requiredSkills"
-                    multiple={true}
-                    value={field.value || []} // Ensure sync
-                    onChange={(event) => {
-                      const selectedOptions = Array.from(event.target.selectedOptions, (option) => option.value);
-                      form.setFieldValue(field.name, selectedOptions);
-                    }}
-                  >
-                    <option value="JavaScript">JavaScript</option>
-                    <option value="Python">Python</option>
-                    <option value="React">React</option>
-                    <option value="Node.js">Node.js</option>
-                  </select>
-                )}
-              </Field>
-              <ErrorMessage name="requiredSkills" component="div" className={styles.error} />
-            </div> */}
-
+            <div>
+             <div>Required Skills</div>
+             <Select
+                onChange={setSelectedOption}
+                options={options}
+                placeholder="Select an option"
+                isMulti
+                styles={customStyles}
+              />
+              {!isValid && <p style={{ color: 'red' }}>This field is required</p>}
+            </div>
+  
             {/* Dropdown for Urgency */}
             <div>
               <label htmlFor="urgency">Urgency</label>
@@ -101,23 +123,22 @@ const Event = () => {
               </Field>
               <ErrorMessage name="urgency" component="div" className={styles.error} />
             </div>
+
+            <div>
+             <div>Select Date</div>
+             <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} />
+            </div>
+
+
+
+            <button type="submit">Submit</button>
           </Form>
         )}
       </Formik>
       
-      <div>
-       <div>Required Skills</div>
-       <Select options={options} isMulti/>
-      </div>
+  
 
-      <div>
-       <div>Select Date</div>
-       <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} />
-      </div>
-
-
-
-     <button type="submit">Submit</button>
+ 
     </div>
   );
 };
