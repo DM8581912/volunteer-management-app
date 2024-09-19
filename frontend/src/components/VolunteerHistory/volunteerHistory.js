@@ -7,24 +7,27 @@ const data = [
     description: "These are all dummy info",
     location: "These are all dummy info",
     requiredSkills: "Dummy info",
-    urgencey: "Dummy info",
+    urgency: "Dummy info",
     date: "These are all dummy info",
+    participationStatus: "Dummy info"
   },
   {
     eventName: "Houston Marathon",
     description: "gave water to runners",
     location: "Houston, TX",
     requiredSkills: "Water handing skills max lvl",
-    urgencey: "Urgent",
+    urgency: "Urgent",
     date: "January 2023",
+    participationStatus: "Not Participating"
   },
   {
     eventName: "These are all dummy info",
     description: "These are all dummy info",
     location: "These are all dummy info",
     requiredSkills: "Dummy info",
-    urgencey: "Dummy info",
+    urgency: "Dummy info",
     date: "These are all dummy info",
+    participationStatus: "Dummy info"
   }
 ];
 
@@ -49,8 +52,9 @@ const VolunteerHistory = () => {
                 <p className={styles.information}><strong>Date:</strong> {entry.date}</p>
                 <p className={styles.information}><strong>Location:</strong> {entry.location}</p>
                 <p className={styles.information}><strong>Required Skills:</strong> {entry.requiredSkills}</p>
-                <p className={styles.information}><strong>Urgency:</strong> {entry.urgencey}</p>
+                <p className={styles.information}><strong>Urgency:</strong> {entry.urgency}</p>
                 <p className={styles.information}><strong>Description:</strong> {entry.description}</p>
+                <p className={styles.information}><strong>Participation Status:</strong> {entry.participationStatus}</p>
               </div>
             ))
           )}

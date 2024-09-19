@@ -3,19 +3,15 @@
     padding: 0;
     box-sizing: border-box;
 }
-html, body {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    background-color: #eaeaea;
-}
+
 
 .page {
     display: flex;
+    flex: 1;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #eaeaea;
+    background-color: white;
 }
 
 .volunteerContainer {
@@ -39,6 +35,7 @@ html, body {
 .historyContainer {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 20px;
 }
 
@@ -47,6 +44,7 @@ html, body {
     flex-direction: column;
     align-items: flex-start;
     border: 1px solid #cccccc;
+    width: 80%;
     padding: 20px;
     border-radius: 8px;
     transition: box-shadow 0.3s ease, transform 0.2s ease;
