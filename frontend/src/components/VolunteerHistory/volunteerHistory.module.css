@@ -1,0 +1,29 @@
+.page{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.volunteerContainer {
+    margin: 10px;
+    padding: 20px;
+    border: 2px solid black;
+    border-radius: 8px;
+    box-Shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+.historyContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.event{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    box-Shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
