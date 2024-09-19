@@ -62,8 +62,9 @@ const VolunteerMatch = () =>{
         <button type="submit" className={styles.button}>Match Volunteer</button>
       </form>
 
-      <h2>Matched Events</h2>
       <div className={styles.matchedEvents}>
+        <h2>Matched Events</h2>
+
         {matchedEvents.length > 0 ? (
           <ul className={styles.eventsList}>
             {matchedEvents.map((event) => (
