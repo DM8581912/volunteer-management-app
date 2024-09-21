@@ -17,7 +17,8 @@ This project is a Volunteer Management Application designed to streamline volunt
 ## Tech Stack
 
 - **Frontend**: React.js
-  - **Libraries**: 
+  - **Libraries**:
     - `Formik` for form handling.
     - `Yup` for validation.
     - `react-router-dom` for navigation.
+    - `react-toastify` for notifications
