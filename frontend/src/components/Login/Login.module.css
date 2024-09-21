@@ -11,17 +11,17 @@ h2 {
   text-align: center;
 }
 
-.form-group {
+.formGroup {
   margin-bottom: 15px;
 }
 
-.form-group label {
+.formGroup label {
   display: block;
   margin-bottom: 5px;
   font-weight: bold; 
 }
 
-.form-group input {
+.formGroup input {
   width: calc(100% - 20px); 
   padding: 10px;
   border: 1px solid #ccc;
@@ -30,7 +30,7 @@ h2 {
   margin-bottom: 5px; 
 }
 
-button {
+.button {
   width: 100%;
   padding: 10px;
   background-color: #4CAF50;
@@ -41,8 +41,24 @@ button {
   margin-top: 10px; 
 }
 
-button:hover {
+.button:hover {
   background-color: #45a049;
+}
+
+
+.registerButton {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px; 
+}
+
+.registerButton:hover {
+  background-color: #0056b3;
 }
 
 .error {

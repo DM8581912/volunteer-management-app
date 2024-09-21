@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
-import styles from "./Login.module.css";  // Import CSS module
-
+import { useNavigate } from 'react-router-dom'; 
+import styles from "./Login.module.css";  
 const Login = () => {
   const [email, setEmail] = useState('testuser@example.com');
   const [password, setPassword] = useState('password123');
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate(); 
 
-  // Function to handle form submission
-  const handleSubmit = (e) => {
+    const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Check the credentials
-    if (email === 'testuser@example.com' && password === 'password123') {
+   if (email === 'testuser@example.com' && password === 'password123') {
       alert('Login successful!');
       navigate('/profile'); 
     } else {

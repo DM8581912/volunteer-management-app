@@ -1,9 +1,9 @@
 import React from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
+import { useNavigate } from 'react-router-dom';
 import * as Yup from "yup";
-import styles from "./Registration.module.css";  // Import CSS module
+import styles from "./Registration.module.css";
 
-// Validation schema using Yup
 const RegistrationSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email address").required("Required"),
   password: Yup.string()
@@ -15,6 +15,7 @@ const RegistrationSchema = Yup.object().shape({
 });
 
 const Registration = () => {
+  const navigate = useNavigate();
   const dummyRegistrationData = {
     email: "dummyuser@example.com",
     password: "dummyPassword123",
@@ -23,36 +24,39 @@ const Registration = () => {
 
   return (
     <div className={styles.registrationContainer}>
-      <h2 className={styles.heading}>Register</h2> 
+      <h2 className={styles.heading}>Register</h2>
       <Formik
         initialValues={dummyRegistrationData}
         validationSchema={RegistrationSchema}
         onSubmit={(values) => {
           console.log("Registration successful!", values);
           alert("Registration successful!");
+          navigate('/login');
         }}
       >
         {({ isSubmitting }) => (
           <Form>
-            <div className={styles.formGroup}> 
+            <div className={styles.formGroup}>
               <label htmlFor="email">Email</label>
-              <Field type="email" name="email" className={styles.input} /> 
-              <ErrorMessage name="email" component="div" className={styles.error} /> 
+              <Field type="email" name="email" className={styles.input} />
+              <ErrorMessage name="email" component="div" className={styles.error} />
             </div>
 
-            <div className={styles.formGroup}> 
+            <div className={styles.formGroup}>
               <label htmlFor="password">Password</label>
-              <Field type="password" name="password" className={styles.input} /> 
-              <ErrorMessage name="password" component="div" className={styles.error} /> 
+              <Field type="password" name="password" className={styles.input} />
+              <ErrorMessage name="password" component="div" className={styles.error} />
             </div>
 
-            <div className={styles.formGroup}> 
+            <div className={styles.formGroup}>
               <label htmlFor="confirmPassword">Confirm Password</label>
-              <Field type="password" name="confirmPassword" className={styles.input} /> 
-              <ErrorMessage name="confirmPassword" component="div" className={styles.error} /> 
+              <Field type="password" name="confirmPassword" className={styles.input} />
+              <ErrorMessage name="confirmPassword" component="div" className={styles.error} />
             </div>
 
-            <button type="submit" disabled={isSubmitting} className={styles.button}>Register</button> 
+            <button type="submit" disabled={isSubmitting} className={styles.button}>
+              Register
+            </button>
           </Form>
         )}
       </Formik>

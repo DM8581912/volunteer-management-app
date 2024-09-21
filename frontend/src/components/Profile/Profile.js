@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
+import { useNavigate } from "react-router-dom";
 import * as Yup from "yup";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import styles from "./Profile.module.css";
 
-// Validation schema for the profile form
 const ProfileSchema = Yup.object().shape({
   fullName: Yup.string().max(50, "Max 50 characters").required("Required"),
   address1: Yup.string().max(100, "Max 100 characters").required("Required"),
@@ -15,33 +17,50 @@ const ProfileSchema = Yup.object().shape({
     .max(9, "Max 9 characters")
     .required("Required"),
   skills: Yup.array().min(1, "Select at least one skill").required("Required"),
-  availability: Yup.string().required("Required"),
+  availability: Yup.array().min(1, "Select at least one date").required("Required"),
+  preferences: Yup.string().max(500, "Max 500 characters"),
 });
 
 const Profile = () => {
-  const dummyProfileData = {
-    fullName: "John Doe",
-    address1: "123 Main Street",
-    address2: "",
-    city: "Houston",
-    state: "TX",
-    zip: "77001",
+  const navigate = useNavigate();
+  const [availability, setAvailability] = useState([new Date()]); 
+
+  const initialProfileData = {
+    fullName: "Jane Doe",
+    address1: "456 Elm Street",
+    address2: "Apt 789",
+    city: "Los Angeles",
+    state: "CA",
+    zip: "90210",
     skills: ["communication", "tech"],
-    availability: "09/20/2024",
+    availability: [new Date()], 
+    preferences: "I prefer weekend volunteering.",
+  };
+
+  const handleDateChange = (date) => {
+    if (Array.isArray(date)) {
+      const validDates = date.filter((d) => d instanceof Date && !isNaN(d));
+      setAvailability(validDates);
+    } else if (date instanceof Date && !isNaN(date)) {
+      setAvailability([date]);
+    } else {
+      setAvailability([]);
+    }
   };
 
   return (
     <div className={styles.profileContainer}>
       <h2>Manage Profile</h2>
       <Formik
-        initialValues={dummyProfileData}
+        initialValues={initialProfileData}
         validationSchema={ProfileSchema}
         onSubmit={(values) => {
           console.log("Profile Updated!", values);
           alert("Profile Updated Successfully!");
+          navigate("/VolunteerMatch"); 
         }}
       >
-        {({ isSubmitting }) => (
+        {({ isSubmitting, setFieldValue }) => (
           <Form>
             <div>
               <label htmlFor="fullName">Full Name</label>
@@ -179,9 +198,31 @@ const Profile = () => {
 
             <div>
               <label htmlFor="availability">Availability</label>
-              <Field type="text" name="availability" placeholder="MM/DD/YYYY" />
+              <DatePicker
+                selected={availability.length > 0 ? availability[0] : null}
+                onChange={(date) => {
+                  handleDateChange(date);
+                  setFieldValue("availability", availability);
+                }}
+                placeholderText="Select dates"
+                className={styles.datePicker}
+                shouldCloseOnSelect={false}
+                isClearable
+                multiple
+                inline
+              />
               <ErrorMessage
                 name="availability"
+                component="div"
+                className={styles.error}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="preferences">Preferences</label>
+              <Field as="textarea" name="preferences" />
+              <ErrorMessage
+                name="preferences"
                 component="div"
                 className={styles.error}
               />

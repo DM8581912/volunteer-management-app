@@ -7,8 +7,6 @@ import Select from 'react-select';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-
-
 // Validation schema using Yup
 const EventSchema = Yup.object().shape({
   eventName: Yup.string().min(100, "Event name must be at least 100 characters").required("Required"),
