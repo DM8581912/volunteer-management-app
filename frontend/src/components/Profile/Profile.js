@@ -5,6 +5,7 @@ import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import styles from "./Profile.module.css";
+import { toast } from "react-toastify";
 
 const ProfileSchema = Yup.object().shape({
   fullName: Yup.string().max(50, "Max 50 characters").required("Required"),
@@ -17,13 +18,15 @@ const ProfileSchema = Yup.object().shape({
     .max(9, "Max 9 characters")
     .required("Required"),
   skills: Yup.array().min(1, "Select at least one skill").required("Required"),
-  availability: Yup.array().min(1, "Select at least one date").required("Required"),
+  availability: Yup.array()
+    .min(1, "Select at least one date")
+    .required("Required"),
   preferences: Yup.string().max(500, "Max 500 characters"),
 });
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [availability, setAvailability] = useState([new Date()]); 
+  const [availability, setAvailability] = useState([new Date()]);
 
   const initialProfileData = {
     fullName: "Jane Doe",
@@ -33,7 +36,7 @@ const Profile = () => {
     state: "CA",
     zip: "90210",
     skills: ["communication", "tech"],
-    availability: [new Date()], 
+    availability: [new Date()],
     preferences: "I prefer weekend volunteering.",
   };
 
@@ -56,8 +59,8 @@ const Profile = () => {
         validationSchema={ProfileSchema}
         onSubmit={(values) => {
           console.log("Profile Updated!", values);
-          alert("Profile Updated Successfully!");
-          navigate("/VolunteerMatch"); 
+          toast.success("Profile Updated Successfully!");
+          navigate("/VolunteerMatch");
         }}
       >
         {({ isSubmitting, setFieldValue }) => (
@@ -228,7 +231,11 @@ const Profile = () => {
               />
             </div>
 
-            <button type="submit" disabled={isSubmitting}>
+            <button
+              className={styles.submit}
+              type="submit"
+              disabled={isSubmitting}
+            >
               Update Profile
             </button>
           </Form>

@@ -11,3 +11,9 @@ h2 {
 button {
   cursor: pointer;
 }
+
+.toast-container {
+  display: flex;
+  margin: 16px;
+  gap: 10px;
+}

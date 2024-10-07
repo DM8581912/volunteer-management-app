@@ -1,8 +1,9 @@
 import React from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import * as Yup from "yup";
 import styles from "./Registration.module.css";
+import { toast } from "react-toastify";
 
 const RegistrationSchema = Yup.object().shape({
   email: Yup.string().email("Invalid email address").required("Required"),
@@ -30,8 +31,8 @@ const Registration = () => {
         validationSchema={RegistrationSchema}
         onSubmit={(values) => {
           console.log("Registration successful!", values);
-          alert("Registration successful!");
-          navigate('/login');
+          toast.success("Registration successful!");
+          navigate("/login");
         }}
       >
         {({ isSubmitting }) => (
@@ -39,22 +40,42 @@ const Registration = () => {
             <div className={styles.formGroup}>
               <label htmlFor="email">Email</label>
               <Field type="email" name="email" className={styles.input} />
-              <ErrorMessage name="email" component="div" className={styles.error} />
+              <ErrorMessage
+                name="email"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="password">Password</label>
               <Field type="password" name="password" className={styles.input} />
-              <ErrorMessage name="password" component="div" className={styles.error} />
+              <ErrorMessage
+                name="password"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
             <div className={styles.formGroup}>
               <label htmlFor="confirmPassword">Confirm Password</label>
-              <Field type="password" name="confirmPassword" className={styles.input} />
-              <ErrorMessage name="confirmPassword" component="div" className={styles.error} />
+              <Field
+                type="password"
+                name="confirmPassword"
+                className={styles.input}
+              />
+              <ErrorMessage
+                name="confirmPassword"
+                component="div"
+                className={styles.error}
+              />
             </div>
 
-            <button type="submit" disabled={isSubmitting} className={styles.button}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={styles.submit}
+            >
               Register
             </button>
           </Form>
