@@ -135,16 +135,12 @@ events = []
 # Validation for event form data
 def validate_event_data(data):
     errors = []
-    
     if 'eventName' not in data or len(data['eventName']) < 5:
-        errors.append("Event name must be at least 5 characters long.")
-        
+        errors.append("Event name must be at least 5 characters long.")    
     if 'eventDate' not in data:
-        errors.append("Event date is required.")
-        
+        errors.append("Event date is required.")     
     if 'urgency' not in data or data['urgency'] not in ['low', 'medium', 'high']:
-        errors.append("Urgency must be low, medium, or high.")
-        
+        errors.append("Urgency must be low, medium, or high.")   
     # Validate requiredSkills: It must be present and contain at least one skill
     if 'requiredSkills' not in data or not isinstance(data['requiredSkills'], list) or len(data['requiredSkills']) == 0:
         errors.append("At least one required skill is required.")
