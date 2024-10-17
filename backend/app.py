@@ -156,7 +156,7 @@ def find_user(username):
     return None
 
 # Route to get volunteer history for a specific user
-@app.route('/volunteer/<username>/history', methods=['GET'])
+@app.route('/volunteerHistory/<username>', methods=['GET'])
 def get_volunteer_history(username):
     user = find_user(username)
 
