@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 import bcrypt
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/eventform": {"origins": "http://localhost:3000"}})
 
 users = []
 
@@ -125,6 +127,52 @@ def update_profile(username):
             return jsonify({'message': 'Profile updated successfully', 'user': response_user_info}), 200
 
     return jsonify({'error': 'User not found'}), 404
+
+
+# In-memory event storage (mock database)
+events = []
+
+# Validation for event form data
+def validate_event_data(data):
+    errors = []
+    if 'eventName' not in data or len(data['eventName']) < 5:
+        errors.append("Event name must be at least 5 characters long.")    
+    if 'eventDate' not in data:
+        errors.append("Event date is required.")     
+    if 'urgency' not in data or data['urgency'] not in ['low', 'medium', 'high']:
+        errors.append("Urgency must be low, medium, or high.")   
+    # Validate requiredSkills: It must be present and contain at least one skill
+    if 'requiredSkills' not in data or not isinstance(data['requiredSkills'], list) or len(data['requiredSkills']) == 0:
+        errors.append("At least one required skill is required.")
+    
+    return errors
+
+
+# Event creation (POST)
+@app.route('/eventform', methods=['POST'])
+def create_event():
+    data = request.json
+    print("Received data:", data)  # Add this to confirm Flask is receiving the request
+
+    errors = validate_event_data(data)
+    if errors:
+        return jsonify({'errors': errors}), 400
+
+    event = {
+        'eventName': data['eventName'],
+        'location': data['location'],
+        'requiredSkills': data.get('requiredSkills', []),
+        'urgency': data['urgency'],
+        'eventDate': data['eventDate']
+    }
+
+    events.append(event)
+    return jsonify({'message': 'Event created successfully', 'event': event}), 201
+
+# Get all events (GET)
+@app.route('/eventform', methods=['GET'])
+def get_events():
+    return jsonify({'events': events}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
