@@ -1,5 +1,5 @@
 import unittest
-from backend.app import app, users 
+from app import app, users
 import bcrypt
 
 class TestUserProfileManagement(unittest.TestCase):
