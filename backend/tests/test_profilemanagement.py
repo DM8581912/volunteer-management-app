@@ -1,11 +1,24 @@
 import unittest
 from app import app
+import bcrypt
 
 class TestUserProfileManagement(unittest.TestCase):
 
     def setUp(self):
         self.app = app.test_client()
         self.app.testing = True
+
+        password = 'password123'
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        self.user_data = {
+            'username': 'testuser',
+            'password': hashed_password,
+            'email': 'testuser@example.com',
+            'skills': ['coding'],
+            'preferences': 'weekends'
+        }
+        app.users.append(self.user_data)
 
     def test_get_profile(self):
         response = self.app.get('/profile/testuser')
