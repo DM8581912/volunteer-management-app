@@ -334,37 +334,21 @@ def find_user(username):
     return None
 
 # Route to get volunteer history for a specific user
-@app.route('/volunteerHistory/<username>', methods=['GET'])
+@app.route('/volunteer/<username>/history', methods=['GET'])
 def get_volunteer_history(username):
-    user = find_user(username)
+    for user in users:
+        if user['username'] == username:
+            return jsonify({'username': user['username'], 'history': user['history']}), 200
+    return jsonify({'error': 'User not found'}), 404
 
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-
-    return jsonify({'username': user['username'], 'history': user['history']}), 200
-
-# Route to add an event to a volunteer's history
 @app.route('/volunteer/<username>/history', methods=['POST'])
 def add_volunteer_history(username):
-    user = find_user(username)
-
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-
-    event_data = request.json
-    new_event = {
-        'eventName': event_data.get('eventName'),
-        'description': event_data.get('description'),
-        'location': event_data.get('location'),
-        'requiredSkills': event_data.get('requiredSkills'),
-        'urgency': event_data.get('urgency'),
-        'date': event_data.get('date'),
-        'participationStatus': event_data.get('participationStatus')
-    }
-
-    user['history'].append(new_event)
-    return jsonify({'message': 'Event added to history successfully', 'history': user['history']}), 201
-
+    for user in users:
+        if user['username'] == username:
+            new_event = request.json
+            user['history'].append(new_event)
+            return jsonify({'username': user['username'], 'history': user['history']}), 201
+    return jsonify({'error': 'User not found'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
