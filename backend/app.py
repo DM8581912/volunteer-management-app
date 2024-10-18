@@ -16,6 +16,49 @@ db = {
     'matches': []
 }
 
+# Sample data for testing
+db['users'] = [
+    {
+        'username': 'johndoe',
+        'password': bcrypt.hashpw('password123'.encode('utf-8'), bcrypt.gensalt()),  # Hashed password
+        'email': 'johndoe@example.com',
+        'skills': ['python', 'flask', 'api'],
+        'preferences': 'remote',
+        'history': []
+    },
+    {
+        'username': 'janedoe',
+        'password': bcrypt.hashpw('mypassword'.encode('utf-8'), bcrypt.gensalt()),
+        'email': 'janedoe@example.com',
+        'skills': ['java', 'spring'],
+        'preferences': 'in-person',
+        'history': []
+    }
+]
+
+db['events'] = [
+    {
+        'eventName': 'Code Sprint',
+        'location': 'New York',
+        'requiredSkills': ['python', 'flask'],
+        'urgency': 'high',
+        'eventDate': '2024-11-01'
+    }
+]
+
+db['notifications'] = {
+    'johndoe': [
+        {
+            'id': 1,
+            'message': 'You have a new event match: Code Sprint',
+            'type': 'event_match',
+            'timestamp': datetime.now().isoformat(),
+            'read': False,
+            'related_id': 'Code Sprint'
+        }
+    ]
+}
+
 class ValidationError(Exception):
     pass
 
@@ -90,6 +133,9 @@ def calculate_match_score(volunteer_skills, event_required_skills):
     if not volunteer_skills or not event_required_skills:
         return 0
     
+    volunteer_skills = {skill.lower() for skill in volunteer_skills}
+    event_required_skills = {skill.lower() for skill in event_required_skills}
+
     matching_skills = set(volunteer_skills) & set(event_required_skills)
     total_required_skills = len(event_required_skills)
     
@@ -155,7 +201,7 @@ def check_upcoming_events():
             except ValueError:
                 continue  # Skip events with invalid dates
                 
-        time.sleep(3600)  # Check every hour
+        time.sleep(1)  # Check every hour
 
 # Routes
 @app.route('/register', methods=['POST'])
