@@ -6,322 +6,85 @@ import threading
 import time
 
 app = Flask(__name__)
-CORS(app, resources={r"/eventform": {"origins": "http://localhost:3000"}})
+CORS(app)
 
-users = []
+# Consolidated in-memory storage
+db = {
+    'users': [],
+    'events': [],
+    'notifications': {},
+    'matches': []
+}
 
-def validate_profile_data(data, update=False):
+class ValidationError(Exception):
+    pass
+
+# Validation schemas
+USER_SCHEMA = {
+    'username': {'required': True, 'type': str, 'min_length': 3, 'max_length': 30},
+    'password': {'required': True, 'type': str, 'min_length': 6},
+    'email': {'required': True, 'type': str, 'max_length': 50},
+    'skills': {'type': list},
+    'preferences': {'type': str}
+}
+
+EVENT_SCHEMA = {
+    'eventName': {'required': True, 'type': str, 'min_length': 5},
+    'location': {'required': True, 'type': str},
+    'requiredSkills': {'required': True, 'type': list, 'min_length': 1},
+    'urgency': {'required': True, 'type': str, 'values': ['low', 'medium', 'high']},
+    'eventDate': {'required': True, 'type': str}
+}
+
+# Helper Functions
+def validate_data(data, schema):
+    """Generic validation function for all data types"""
     errors = []
-
-    if 'email' in data:
-        if len(data['email']) > 50:
-            errors.append('Email cannot exceed 50 characters.')
-        if not isinstance(data['email'], str):
-            errors.append('Email must be a string.')
-
-    if 'skills' in data and not isinstance(data['skills'], list):
-        errors.append('Skills must be a list.')
-
-    if 'preferences' in data and not isinstance(data['preferences'], str):
-        errors.append('Preferences must be a string.')
-
+    
+    for field, rules in schema.items():
+        if 'required' in rules and rules['required'] and field not in data:
+            errors.append(f'{field} is required.')
+            continue
+            
+        if field not in data:
+            continue
+            
+        value = data[field]
+        
+        if 'type' in rules and not isinstance(value, rules['type']):
+            errors.append(f'{field} must be of type {rules["type"]}.')
+        
+        if 'min_length' in rules and len(value) < rules['min_length']:
+            errors.append(f'{field} must be at least {rules["min_length"]} characters.')
+            
+        if 'max_length' in rules and len(value) > rules['max_length']:
+            errors.append(f'{field} must not exceed {rules["max_length"]} characters.')
+            
+        if 'values' in rules and value not in rules['values']:
+            errors.append(f'{field} must be one of: {", ".join(rules["values"])}')
+            
     return errors
 
-@app.route('/')
-def home():
-    return jsonify({"message": "Welcome to the Volunteer Management App Backend!"})
+def get_user(username):
+    """Centralized user lookup"""
+    return next((user for user in db['users'] if user['username'] == username), None)
 
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.json
-    errors = validate_profile_data(data)
+def get_event(event_name):
+    """Centralized event lookup"""
+    return next((event for event in db['events'] if event['eventName'] == event_name), None)
 
-    if not data.get('username'):
-        errors.append('Username is required.')
-    elif len(data['username']) < 3 or len(data['username']) > 30:
-        errors.append('Username must be between 3 and 30 characters.')
+def create_response(data=None, message=None, error=None, status=200):
+    """Standardized response creation"""
+    response = {}
+    if data is not None:
+        response.update(data)
+    if message is not None:
+        response['message'] = message
+    if error is not None:
+        response['error'] = error
+    return jsonify(response), status
 
-    if not data.get('password'):
-        errors.append('Password is required.')
-    elif len(data['password']) < 6:
-        errors.append('Password must be at least 6 characters long.')
-
-    if not data.get('email'):
-        errors.append('Email is required.')
-
-    if errors:
-        return jsonify({'errors': errors}), 400
-
-    for user in users:
-        if user['username'] == data['username']:
-            return jsonify({'error': 'User already exists'}), 400
-
-    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
-
-    user_info = {
-        'username': data['username'],
-        'password': hashed_password,
-        'email': data['email'],
-        'skills': data.get('skills', []),
-        'preferences': data.get('preferences', '')
-    }
-    users.append(user_info)
-
-    response_user_info = {
-        'username': data['username'],
-        'email': data['email'],
-        'skills': data.get('skills', []),
-        'preferences': data.get('preferences', '')
-    }
-
-    return jsonify({'message': 'User registered successfully', 'user': response_user_info}), 201
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-
-    if not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Username and password are required'}), 400
-
-    for user in users:
-        if user['username'] == data['username']:
-            if bcrypt.checkpw(data['password'].encode('utf-8'), user['password']):
-                return jsonify({'message': 'Login successful'}), 200
-            else:
-                return jsonify({'error': 'Invalid credentials'}), 401
-
-    return jsonify({'error': 'Invalid credentials'}), 401
-
-@app.route('/profile/<username>', methods=['GET'])
-def get_profile(username):
-    for user in users:
-        if user['username'] == username:
-            response_user_info = {
-                'username': user['username'],
-                'email': user['email'],
-                'skills': user['skills'],
-                'preferences': user['preferences']
-            }
-            return jsonify({'user': response_user_info}), 200
-
-    return jsonify({'error': 'User not found'}), 404
-
-@app.route('/profile/<username>', methods=['PUT'])
-def update_profile(username):
-    data = request.json
-    errors = validate_profile_data(data, update=True)
-
-    if errors:
-        return jsonify({'errors': errors}), 400
-
-    for user in users:
-        if user['username'] == username:
-            user['email'] = data.get('email', user['email'])
-            user['skills'] = data.get('skills', user['skills'])
-            user['preferences'] = data.get('preferences', user['preferences'])
-
-            response_user_info = {
-                'username': user['username'],
-                'email': user['email'],
-                'skills': user['skills'],
-                'preferences': user['preferences']
-            }
-
-            return jsonify({'message': 'Profile updated successfully', 'user': response_user_info}), 200
-
-    return jsonify({'error': 'User not found'}), 404
-
-
-# In-memory event storage (mock database)
-events = []
-
-# Validation for event form data
-def validate_event_data(data):
-    errors = []
-    if 'eventName' not in data or len(data['eventName']) < 5:
-        errors.append("Event name must be at least 5 characters long.")    
-    if 'eventDate' not in data:
-        errors.append("Event date is required.")     
-    if 'urgency' not in data or data['urgency'] not in ['low', 'medium', 'high']:
-        errors.append("Urgency must be low, medium, or high.")   
-    # Validate requiredSkills: It must be present and contain at least one skill
-    if 'requiredSkills' not in data or not isinstance(data['requiredSkills'], list) or len(data['requiredSkills']) == 0:
-        errors.append("At least one required skill is required.")
-    
-    return errors
-
-
-# Event creation (POST)
-@app.route('/eventform', methods=['POST'])
-def create_event():
-    data = request.json
-    errors = validate_event_data(data)
-    if errors:
-        return jsonify({'errors': errors}), 400
-
-    event = {
-        'eventName': data['eventName'],
-        'location': data['location'],
-        'requiredSkills': data.get('requiredSkills', []),
-        'urgency': data['urgency'],
-        'eventDate': data['eventDate']
-    }
-    
-    events.append(event)
-    
-    # Find and notify matching volunteers
-    matches = find_best_matches(event)
-    for match in matches:
-        notification_message = f"New event matching your skills: {event['eventName']} on {event['eventDate']}"
-        create_notification(
-            match['username'],
-            notification_message,
-            'event_match',
-            event['eventName']
-        )
-    
-    return jsonify({
-        'message': 'Event created successfully',
-        'event': event,
-        'matches': matches
-    }), 201
-
-
-# Get all events (GET)
-@app.route('/eventform', methods=['GET'])
-def get_events():
-    return jsonify({'events': events}), 200
-
-CORS(app, resources={r"/volunteer/*": {"origins": "http://localhost:3000"}})
-
-users = []
-
-def validate_profile_data(data, update=False):
-    errors = []
-
-    if 'email' in data:
-        if len(data['email']) > 50:
-            errors.append('Email cannot exceed 50 characters.')
-        if not isinstance(data['email'], str):
-            errors.append('Email must be a string.')
-
-    if 'skills' in data and not isinstance(data['skills'], list):
-        errors.append('Skills must be a list.')
-
-    if 'preferences' in data and not isinstance(data['preferences'], str):
-        errors.append('Preferences must be a string.')
-
-    return errors
-
-@app.route('/')
-def home():
-    return jsonify({"message": "Welcome to the Volunteer Management App Backend!"})
-
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.json
-    errors = validate_profile_data(data)
-
-    if not data.get('username'):
-        errors.append('Username is required.')
-    elif len(data['username']) < 3 or len(data['username']) > 30:
-        errors.append('Username must be between 3 and 30 characters.')
-
-    if not data.get('password'):
-        errors.append('Password is required.')
-    elif len(data['password']) < 6:
-        errors.append('Password must be at least 6 characters long.')
-
-    if not data.get('email'):
-        errors.append('Email is required.')
-
-    if errors:
-        return jsonify({'errors': errors}), 400
-
-    for user in users:
-        if user['username'] == data['username']:
-            return jsonify({'error': 'User already exists'}), 400
-
-    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
-
-    user_info = {
-        'username': data['username'],
-        'password': hashed_password,
-        'email': data['email'],
-        'skills': data.get('skills', []),
-        'preferences': data.get('preferences', '')
-    }
-    users.append(user_info)
-
-    response_user_info = {
-        'username': data['username'],
-        'email': data['email'],
-        'skills': data.get('skills', []),
-        'preferences': data.get('preferences', '')
-    }
-
-    return jsonify({'message': 'User registered successfully', 'user': response_user_info}), 201
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-
-    if not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Username and password are required'}), 400
-
-    for user in users:
-        if user['username'] == data['username']:
-            if bcrypt.checkpw(data['password'].encode('utf-8'), user['password']):
-                return jsonify({'message': 'Login successful'}), 200
-            else:
-                return jsonify({'error': 'Invalid credentials'}), 401
-
-    return jsonify({'error': 'Invalid credentials'}), 401
-
-@app.route('/profile/<username>', methods=['GET'])
-def get_profile(username):
-    for user in users:
-        if user['username'] == username:
-            response_user_info = {
-                'username': user['username'],
-                'email': user['email'],
-                'skills': user['skills'],
-                'preferences': user['preferences']
-            }
-            return jsonify({'user': response_user_info}), 200
-
-    return jsonify({'error': 'User not found'}), 404
-
-@app.route('/profile/<username>', methods=['PUT'])
-def update_profile(username):
-    data = request.json
-    errors = validate_profile_data(data, update=True)
-
-    if errors:
-        return jsonify({'errors': errors}), 400
-
-    for user in users:
-        if user['username'] == username:
-            user['email'] = data.get('email', user['email'])
-            user['skills'] = data.get('skills', user['skills'])
-            user['preferences'] = data.get('preferences', user['preferences'])
-
-            response_user_info = {
-                'username': user['username'],
-                'email': user['email'],
-                'skills': user['skills'],
-                'preferences': user['preferences']
-            }
-
-            return jsonify({'message': 'Profile updated successfully', 'user': response_user_info}), 200
-
-    return jsonify({'error': 'User not found'}), 404
-
-'''
-Matching Module
-'''
-
-matches = []
+# Matching System Functions
 def calculate_match_score(volunteer_skills, event_required_skills):
     """Calculate match score between volunteer and event."""
     if not volunteer_skills or not event_required_skills:
@@ -339,7 +102,7 @@ def find_best_matches(event, max_matches=5):
     """Find the best volunteer matches for an event."""
     event_scores = []
     
-    for user in users:
+    for user in db['users']:
         if 'skills' not in user:
             continue
             
@@ -351,48 +114,16 @@ def find_best_matches(event, max_matches=5):
                 'email': user['email']
             })
     
-    # Sort by score in descending order and return top matches
     return sorted(event_scores, key=lambda x: x['score'], reverse=True)[:max_matches]
 
-@app.route('/matches/event/<event_name>', methods=['GET'])
-def get_event_matches(event_name):
-    """Get matches for a specific event."""
-    event = next((e for e in events if e['eventName'] == event_name), None)
-    if not event:
-        return jsonify({'error': 'Event not found'}), 404
-        
-    matches = find_best_matches(event)
-    return jsonify({'matches': matches}), 200
-
-@app.route('/matches/volunteer/<username>', methods=['GET'])
-def get_volunteer_matches(username):
-    """Get matching events for a volunteer."""
-    user = next((u for u in users if u['username'] == username), None)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-        
-    matching_events = []
-    for event in events:
-        score = calculate_match_score(user.get('skills', []), event['requiredSkills'])
-        if score > 50:
-            matching_events.append({
-                'event': event,
-                'matchScore': score
-            })
-            
-    return jsonify({'matches': matching_events}), 200
-
-'''
-Notification Module
-'''
-
+# Notification System Functions
 def create_notification(username, message, notification_type, related_id=None):
     """Create a new notification for a user."""
-    if username not in notifications:
-        notifications[username] = []
+    if username not in db['notifications']:
+        db['notifications'][username] = []
         
     notification = {
-        'id': len(notifications[username]) + 1,
+        'id': len(db['notifications'][username]) + 1,
         'message': message,
         'type': notification_type,
         'timestamp': datetime.now().isoformat(),
@@ -400,91 +131,231 @@ def create_notification(username, message, notification_type, related_id=None):
         'related_id': related_id
     }
     
-    notifications[username].append(notification)
+    db['notifications'][username].append(notification)
     return notification
 
-@app.route('/notifications/<username>', methods=['GET'])
-def get_notifications(username):
-    """Get all notifications for a user."""
-    user_notifications = notifications.get(username, [])
-    return jsonify({'notifications': user_notifications}), 200
-
-@app.route('/notifications/<username>/mark-read', methods=['POST'])
-def mark_notifications_read(username):
-    """Mark notifications as read."""
-    notification_ids = request.json.get('notification_ids', [])
-    if username not in notifications:
-        return jsonify({'error': 'No notifications found'}), 404
-        
-    for notification in notifications[username]:
-        if notification['id'] in notification_ids:
-            notification['read'] = True
-            
-    return jsonify({'message': 'Notifications marked as read'}), 200
-
-# Notification checker background task
 def check_upcoming_events():
     """Background task to check for upcoming events and send reminders."""
     while True:
         current_time = datetime.now()
-        for event in events:
-            event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
-            
-            # Send reminder 24 hours before event
-            if current_time + timedelta(days=1) >= event_date:
-                matches = find_best_matches(event)
-                for match in matches:
-                    create_notification(
-                        match['username'],
-                        f"Reminder: {event['eventName']} is tomorrow!",
-                        'event_reminder',
-                        event['eventName']
-                    )
-        
+        for event in db['events']:
+            try:
+                event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
+                
+                # Send reminder 24 hours before event
+                if current_time + timedelta(days=1) >= event_date >= current_time:
+                    matches = find_best_matches(event)
+                    for match in matches:
+                        create_notification(
+                            match['username'],
+                            f"Reminder: {event['eventName']} is tomorrow!",
+                            'event_reminder',
+                            event['eventName']
+                        )
+            except ValueError:
+                continue  # Skip events with invalid dates
+                
         time.sleep(3600)  # Check every hour
 
-##################################################
-users = [
-    # Example user with a history
-    {
-        'username': 'john_doe',
-        'email': 'john@example.com',
-        'history': [
-            {
-                'eventName': 'Houston Marathon',
-                'description': 'Gave water to runners',
-                'location': 'Houston, TX',
-                'requiredSkills': 'Water handing skills max lvl',
-                'urgency': 'Urgent',
-                'date': 'January 2023',
-                'participationStatus': 'Not Participating'
-            }
-        ]
-    }
-]
-def find_user(username):
-    for user in users:
-        if user['username'] == username:
-            return user
-    return None
+# Routes
+@app.route('/register', methods=['POST'])
+def register():
+    try:
+        data = request.json
+        errors = validate_data(data, USER_SCHEMA)
+        if errors:
+            return create_response(error=errors, status=400)
 
-# Route to get volunteer history for a specific user
-@app.route('/volunteer/<username>/history', methods=['GET'])
-def get_volunteer_history(username):
-    for user in users:
-        if user['username'] == username:
-            return jsonify({'username': user['username'], 'history': user['history']}), 200
-    return jsonify({'error': 'User not found'}), 404
+        if get_user(data['username']):
+            return create_response(error='User already exists', status=400)
 
-@app.route('/volunteer/<username>/history', methods=['POST'])
-def add_volunteer_history(username):
-    for user in users:
-        if user['username'] == username:
-            new_event = request.json
-            user['history'].append(new_event)
-            return jsonify({'username': user['username'], 'history': user['history']}), 201
-    return jsonify({'error': 'User not found'}), 404
+        user_info = {
+            'username': data['username'],
+            'password': bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()),
+            'email': data['email'],
+            'skills': data.get('skills', []),
+            'preferences': data.get('preferences', ''),
+            'history': []
+        }
+        db['users'].append(user_info)
 
+        response_data = {k: v for k, v in user_info.items() if k != 'password'}
+        return create_response(
+            data={'user': response_data},
+            message='User registered successfully',
+            status=201
+        )
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.json
+        if not data.get('username') or not data.get('password'):
+            return create_response(error='Username and password are required', status=400)
+
+        user = get_user(data['username'])
+        if user and bcrypt.checkpw(data['password'].encode('utf-8'), user['password']):
+            return create_response(message='Login successful')
+        return create_response(error='Invalid credentials', status=401)
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/profile/<username>', methods=['GET', 'PUT'])
+def handle_profile(username):
+    try:
+        user = get_user(username)
+        if not user:
+            return create_response(error='User not found', status=404)
+
+        if request.method == 'GET':
+            response_data = {k: v for k, v in user.items() if k != 'password'}
+            return create_response(data={'user': response_data})
+
+        data = request.json
+        errors = validate_data(data, {k: v for k, v in USER_SCHEMA.items() if k != 'password'})
+        if errors:
+            return create_response(error=errors, status=400)
+
+        for field in ['email', 'skills', 'preferences']:
+            if field in data:
+                user[field] = data[field]
+
+        response_data = {k: v for k, v in user.items() if k != 'password'}
+        return create_response(
+            data={'user': response_data},
+            message='Profile updated successfully'
+        )
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/eventform', methods=['GET', 'POST'])
+def handle_events():
+    try:
+        if request.method == 'GET':
+            return create_response(data={'events': db['events']})
+
+        data = request.json
+        errors = validate_data(data, EVENT_SCHEMA)
+        if errors:
+            return create_response(error=errors, status=400)
+
+        event = {
+            'eventName': data['eventName'],
+            'location': data['location'],
+            'requiredSkills': data['requiredSkills'],
+            'urgency': data['urgency'],
+            'eventDate': data['eventDate']
+        }
+        db['events'].append(event)
+
+        # Find and notify matching volunteers
+        matches = find_best_matches(event)
+        for match in matches:
+            create_notification(
+                match['username'],
+                f"New event matching your skills: {event['eventName']} on {event['eventDate']}",
+                'event_match',
+                event['eventName']
+            )
+
+        return create_response(
+            data={'event': event, 'matches': matches},
+            message='Event created successfully',
+            status=201
+        )
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/matches/event/<event_name>', methods=['GET'])
+def get_event_matches(event_name):
+    """Get matches for a specific event."""
+    try:
+        event = get_event(event_name)
+        if not event:
+            return create_response(error='Event not found', status=404)
+            
+        matches = find_best_matches(event)
+        return create_response(data={'matches': matches})
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/matches/volunteer/<username>', methods=['GET'])
+def get_volunteer_matches(username):
+    """Get matching events for a volunteer."""
+    try:
+        user = get_user(username)
+        if not user:
+            return create_response(error='User not found', status=404)
+            
+        matching_events = []
+        for event in db['events']:
+            score = calculate_match_score(user.get('skills', []), event['requiredSkills'])
+            if score > 50:
+                matching_events.append({
+                    'event': event,
+                    'matchScore': score
+                })
+                
+        return create_response(data={'matches': matching_events})
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/notifications/<username>', methods=['GET'])
+def get_notifications(username):
+    """Get all notifications for a user."""
+    try:
+        user_notifications = db['notifications'].get(username, [])
+        return create_response(data={'notifications': user_notifications})
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/notifications/<username>/mark-read', methods=['POST'])
+def mark_notifications_read(username):
+    """Mark notifications as read."""
+    try:
+        notification_ids = request.json.get('notification_ids', [])
+        if username not in db['notifications']:
+            return create_response(error='No notifications found', status=404)
+            
+        for notification in db['notifications'][username]:
+            if notification['id'] in notification_ids:
+                notification['read'] = True
+                
+        return create_response(message='Notifications marked as read')
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+@app.route('/volunteer/<username>/history', methods=['GET', 'POST'])
+def handle_volunteer_history(username):
+    """Handle volunteer history operations."""
+    try:
+        user = get_user(username)
+        if not user:
+            return create_response(error='User not found', status=404)
+
+        if request.method == 'GET':
+            return create_response(data={
+                'username': user['username'],
+                'history': user.get('history', [])
+            })
+
+        # POST method
+        new_event = request.json
+        if 'history' not in user:
+            user['history'] = []
+        user['history'].append(new_event)
+        
+        return create_response(
+            data={'username': user['username'], 'history': user['history']},
+            message='History updated successfully',
+            status=201
+        )
+    except Exception as e:
+        return create_response(error=str(e), status=500)
+
+# Start the server
 if __name__ == '__main__':
     reminder_thread = threading.Thread(target=check_upcoming_events, daemon=True)
     reminder_thread.start()
