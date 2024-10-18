@@ -1,5 +1,5 @@
 import unittest
-from app import app
+from backend.app import app, users  
 import bcrypt
 
 class TestLogin(unittest.TestCase):
@@ -18,7 +18,10 @@ class TestLogin(unittest.TestCase):
             'skills': ['coding'],
             'preferences': 'weekends'
         }
-        app.users.append(self.user_data)
+        users.append(self.user_data)  
+
+    def tearDown(self):
+        users.clear()  
 
     def test_valid_login(self):
         response = self.app.post('/login', json={'username': 'testuser', 'password': 'password123'})
