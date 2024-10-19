@@ -1,5 +1,5 @@
 import unittest
-from app import app, users
+from app import app, db
 import bcrypt
 
 class TestLogin(unittest.TestCase):
@@ -8,6 +8,7 @@ class TestLogin(unittest.TestCase):
         self.app = app.test_client()
         self.app.testing = True
 
+        # Set up a test user in the database
         password = 'password123'
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -18,10 +19,10 @@ class TestLogin(unittest.TestCase):
             'skills': ['coding'],
             'preferences': 'weekends'
         }
-        users.append(self.user_data)  
+        db['users'].append(self.user_data)
 
     def tearDown(self):
-        users.clear()  
+        db['users'].clear()
 
     def test_valid_login(self):
         response = self.app.post('/login', json={'username': 'testuser', 'password': 'password123'})
@@ -35,3 +36,4 @@ class TestLogin(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -180,28 +180,27 @@ def create_notification(username, message, notification_type, related_id=None):
     db['notifications'][username].append(notification)
     return notification
 
-def check_upcoming_events():
-    """Background task to check for upcoming events and send reminders."""
-    while True:
-        current_time = datetime.now()
-        for event in db['events']:
-            try:
-                event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
-                
-                # Send reminder 24 hours before event
-                if current_time + timedelta(days=1) >= event_date >= current_time:
-                    matches = find_best_matches(event)
-                    for match in matches:
-                        create_notification(
-                            match['username'],
-                            f"Reminder: {event['eventName']} is tomorrow!",
-                            'event_reminder',
-                            event['eventName']
-                        )
-            except ValueError:
-                continue  # Skip events with invalid dates
-                
-        time.sleep(1)  # Check every hour
+def check_upcoming_events(test_mode=False):
+    current_time = datetime.now()
+    print("Checking events:", db['events'])  # Add this line for debugging
+    for event in db['events']:
+        try:
+            event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
+            if current_time + timedelta(days=1) >= event_date >= current_time:
+                # Find and notify matching volunteers
+                matches = find_best_matches(event)
+                for match in matches:
+                    create_notification(
+                        match['username'],
+                        f"Reminder: {event['eventName']} is tomorrow!",
+                        'event_reminder',
+                        event['eventName']
+                    )
+        except ValueError:
+            continue  # Skip events with invalid dates
+    if test_mode:
+        return  # Ensure this returns when called in test mode
+
 
 # Routes
 @app.route('/register', methods=['POST'])

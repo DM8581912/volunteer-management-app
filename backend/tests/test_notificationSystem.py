@@ -1,7 +1,7 @@
 import unittest
 import json
 from datetime import datetime, timedelta
-from app import app, db, create_notification
+from app import app, db, create_notification, check_upcoming_events
 
 class NotificationSystemTestCase(unittest.TestCase):
     def setUp(self):
@@ -125,19 +125,18 @@ class NotificationSystemTestCase(unittest.TestCase):
 
     def test_event_reminder_notification(self):
         """Test notification creation for upcoming event reminders"""
-        # Create an event for tomorrow
         tomorrow_event = {
             'eventName': 'Tomorrow Event',
             'location': 'City Center',
             'requiredSkills': ['Heavy Lifting'],
             'urgency': 'high',
-            'eventDate': (datetime.now() + timedelta(days=1)).isoformat()
+            'eventDate': (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         }
         db['events'].append(tomorrow_event)
         
         # Manually trigger the reminder check
         from app import check_upcoming_events
-        check_upcoming_events()
+        check_upcoming_events(test_mode=True)  # Call with test_mode=True
         
         # Verify reminder notification was created
         self.assertIn('test_user', db['notifications'])
@@ -146,6 +145,7 @@ class NotificationSystemTestCase(unittest.TestCase):
             n['type'] == 'event_reminder' and 'Tomorrow Event' in n['message']
             for n in notifications
         ))
+
 
     def test_get_notifications_nonexistent_user(self):
         """Test getting notifications for non-existent user"""
