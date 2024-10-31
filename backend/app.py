@@ -4,60 +4,72 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import threading
 import time
+from supabase import create_client
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Consolidated in-memory storage
-db = {
-    'users': [],
-    'events': [],
-    'notifications': {},
-    'matches': []
-}
+# Initialize Supabase client
+supabase = create_client(
+    os.getenv('SUPABASE_URL'),
+    os.getenv('SUPABASE_KEY')
+)
 
-# Sample data for testing
-db['users'] = [
-    {
-        'username': 'johndoe',
-        'password': bcrypt.hashpw('password123'.encode('utf-8'), bcrypt.gensalt()),  # Hashed password
-        'email': 'johndoe@example.com',
-        'skills': ['python', 'flask', 'api'],
-        'preferences': 'remote',
-        'history': []
-    },
-    {
-        'username': 'janedoe',
-        'password': bcrypt.hashpw('mypassword'.encode('utf-8'), bcrypt.gensalt()),
-        'email': 'janedoe@example.com',
-        'skills': ['java', 'spring'],
-        'preferences': 'in-person',
-        'history': []
-    }
-]
+# # Consolidated in-memory storage
+# db = {
+#     'users': [],
+#     'events': [],
+#     'notifications': {},
+#     'matches': []
+# }
 
-db['events'] = [
-    {
-        'eventName': 'Code Sprint',
-        'location': 'New York',
-        'requiredSkills': ['python', 'flask'],
-        'urgency': 'high',
-        'eventDate': '2024-11-01'
-    }
-]
+# # Sample data for testing
+# db['users'] = [
+#     {
+#         'username': 'johndoe',
+#         'password': bcrypt.hashpw('password123'.encode('utf-8'), bcrypt.gensalt()),  # Hashed password
+#         'email': 'johndoe@example.com',
+#         'skills': ['python', 'flask', 'api'],
+#         'preferences': 'remote',
+#         'history': []
+#     },
+#     {
+#         'username': 'janedoe',
+#         'password': bcrypt.hashpw('mypassword'.encode('utf-8'), bcrypt.gensalt()),
+#         'email': 'janedoe@example.com',
+#         'skills': ['java', 'spring'],
+#         'preferences': 'in-person',
+#         'history': []
+#     }
+# ]
 
-db['notifications'] = {
-    'johndoe': [
-        {
-            'id': 1,
-            'message': 'You have a new event match: Code Sprint',
-            'type': 'event_match',
-            'timestamp': datetime.now().isoformat(),
-            'read': False,
-            'related_id': 'Code Sprint'
-        }
-    ]
-}
+# db['events'] = [
+#     {
+#         'eventName': 'Code Sprint',
+#         'location': 'New York',
+#         'requiredSkills': ['python', 'flask'],
+#         'urgency': 'high',
+#         'eventDate': '2024-11-01'
+#     }
+# ]
+
+# db['notifications'] = {
+#     'johndoe': [
+#         {
+#             'id': 1,
+#             'message': 'You have a new event match: Code Sprint',
+#             'type': 'event_match',
+#             'timestamp': datetime.now().isoformat(),
+#             'read': False,
+#             'related_id': 'Code Sprint'
+#         }
+#     ]
+# }
 
 class ValidationError(Exception):
     pass
