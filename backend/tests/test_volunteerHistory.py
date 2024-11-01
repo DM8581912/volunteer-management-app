@@ -4,9 +4,15 @@ from app import app, db
 
 class VolunteerHistoryTestCase(unittest.TestCase):
     def setUp(self):
-        """Sets up a test client and initializes test data"""
+        """Sets up a test client, checks database connection, and initializes test data."""
         self.app = app.test_client()
         self.app.testing = True
+
+        # Ensure the database connection is available
+        try:
+            db['users']  # Access a table or key to confirm the connection is active
+        except Exception as e:
+            self.fail(f"Database connection failed in setUp: {e}")
 
         # Create a sample user with history
         self.sample_user = {
