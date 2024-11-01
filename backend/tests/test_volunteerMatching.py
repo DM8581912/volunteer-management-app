@@ -199,22 +199,6 @@ class VolunteerMatchingTestCase(unittest.TestCase):
             ['First Aid', 'CPR']
         )
         self.assertEqual(score, 100)
-def setUp(self):
-    """Set up test client, initialize test data, and verify database connection"""
-    self.app = app.test_client()
-    self.app.testing = True
-    
-    # Verify database connection
-    try:
-        db['users']  # Attempting to access db should confirm connection
-    except Exception as e:
-        self.fail(f"Database connection failed in setUp: {e}")
-    
-    # Clear the database and initialize data
-    db['users'] = []
-    db['events'] = []
-
-    # Continue setting up test users and events...
 
 if __name__ == '__main__':
     unittest.main()
