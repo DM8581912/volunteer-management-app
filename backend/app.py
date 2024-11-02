@@ -384,33 +384,41 @@ def mark_notifications_read(username):
     except Exception as e:
         return create_response(error=str(e), status=500)
 
-@app.route('/volunteer/<username>/history', methods=['GET', 'POST'])
-def handle_volunteer_history(username):
-    """Handle volunteer history operations."""
+# Example Route: Get Volunteer History
+@app.route('/volunteer/<username>/history', methods=['GET'])
+def get_volunteer_history(username):
     try:
-        user = get_user(username)
-        if not user:
-            return create_response(error='User not found', status=404)
-
-        if request.method == 'GET':
-            return create_response(data={
-                'username': user['username'],
-                'history': user.get('history', [])
-            })
-
-        # POST method
-        new_event = request.json
-        if 'history' not in user:
-            user['history'] = []
-        user['history'].append(new_event)
-        
-        return create_response(
-            data={'username': user['username'], 'history': user['history']},
-            message='History updated successfully',
-            status=201
-        )
+        response = supabase.table('volunteerhistory').select("*").eq('username', username).execute()
+        if not response.data:
+            return jsonify({'error': 'User not found'}), 404
+        return jsonify({'username': username, 'history': response.data}), 200
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        return jsonify({'error': str(e)}), 500
+
+# Example Route: Add Volunteer Event
+@app.route('/volunteer/<username>/history', methods=['POST'])
+def add_volunteer_event(username):
+    try:
+        data = request.json
+        # Ensure that user exists before adding history
+        user_response = supabase.table('users').select("*").eq('username', username).execute()
+        if not user_response.data:
+            return jsonify({'error': 'User not found'}), 404
+        
+        event = {
+            'username': username,
+            'eventname': data.get('eventName'),
+            'description': data.get('description'),
+            'location': data.get('location'),
+            'requiredskills': data.get('requiredSkills', []),
+            'urgency': data.get('urgency'),
+            'eventdate': data.get('eventDate'),
+            'participationstatus': data.get('participationStatus')
+        }
+        supabase.table('volunteerhistory').insert(event).execute()
+        return jsonify({'username': username, 'history': event}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Start the server
 if __name__ == '__main__':
