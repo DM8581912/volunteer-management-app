@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
 from supabase import create_client
+from reporting import reporting
+
 
 # Load environment variables
 load_dotenv()
@@ -327,6 +329,9 @@ def add_volunteer_event(username):
         return jsonify({'username': username, 'history': event}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+app.register_blueprint(reporting, url_prefix="/admin")
+
 
 # Start the server
 if __name__ == '__main__':
