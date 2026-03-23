@@ -1,3 +1,6 @@
+import logging
+from typing import Optional
+
 from flask import Flask, request, jsonify
 import bcrypt
 from flask_cors import CORS
@@ -7,18 +10,30 @@ from dotenv import load_dotenv
 from supabase import create_client
 from reporting import reporting
 
-
 # Load environment variables
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000')])
 
 # Initialize Supabase client
-supabase = create_client(
-    os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_KEY')
-)
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables.")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Constants
+MATCH_THRESHOLD = 50
+MAX_MATCHES = 5
 
 # Validation schemas
 USER_SCHEMA = {
@@ -37,30 +52,67 @@ EVENT_SCHEMA = {
     'eventDate': {'required': True, 'type': str}
 }
 
-def validate_data(data, schema):
+
+# --- Validation ---
+
+def validate_data(data: dict, schema: dict) -> list[str]:
+    """Validate input data against a schema. Returns a list of error messages."""
     errors = []
     for field, rules in schema.items():
-        if 'required' in rules and rules['required'] and field not in data:
+        is_required = rules.get('required', False)
+
+        if is_required and field not in data:
             errors.append(f'{field} is required.')
             continue
+
         if field not in data:
             continue
+
         value = data[field]
+
         if 'type' in rules and not isinstance(value, rules['type']):
-            errors.append(f'{field} must be of type {rules["type"]}.')
+            errors.append(f'{field} must be of type {rules["type"].__name__}.')
         if 'min_length' in rules and len(value) < rules['min_length']:
             errors.append(f'{field} must be at least {rules["min_length"]} characters.')
         if 'max_length' in rules and len(value) > rules['max_length']:
             errors.append(f'{field} must not exceed {rules["max_length"]} characters.')
         if 'values' in rules and value not in rules['values']:
             errors.append(f'{field} must be one of: {", ".join(rules["values"])}')
+
     return errors
 
-def get_user(username):
+
+# --- Database Helpers ---
+
+def get_user(username: str) -> Optional[dict]:
+    """Fetch a user by username from Supabase."""
     response = supabase.table('users').select('*').eq('username', username).execute()
     return response.data[0] if response.data else None
 
-def create_response(data=None, message=None, error=None, status=200):
+
+def get_all_users() -> list[dict]:
+    """Fetch all users from Supabase."""
+    response = supabase.table('users').select('*').execute()
+    return response.data or []
+
+
+def get_all_events() -> list[dict]:
+    """Fetch all events from Supabase."""
+    response = supabase.table('events').select('*').execute()
+    return response.data or []
+
+
+def get_event_by_name(event_name: str) -> Optional[dict]:
+    """Fetch an event by name from Supabase."""
+    response = supabase.table('events').select('*').eq('eventName', event_name).execute()
+    return response.data[0] if response.data else None
+
+
+# --- Response Helper ---
+
+def create_response(data: Optional[dict] = None, message: Optional[str] = None,
+                    error=None, status: int = 200):
+    """Build a consistent JSON response."""
     response = {}
     if data is not None:
         response.update(data)
@@ -70,95 +122,89 @@ def create_response(data=None, message=None, error=None, status=200):
         response['error'] = error
     return jsonify(response), status
 
-def calculate_match_score(volunteer_skills, event_required_skills):
-    """Calculate match score between volunteer and event."""
+
+# --- Matching Logic ---
+
+def calculate_match_score(volunteer_skills: list[str],
+                          event_required_skills: list[str]) -> float:
+    """Calculate match score (0-100) between volunteer skills and event requirements."""
     if not volunteer_skills or not event_required_skills:
-        return 0
-    
-    # Normalize skills to lowercase for case-insensitive comparison
-    volunteer_skills = {skill.lower() for skill in volunteer_skills}
-    event_required_skills = {skill.lower() for skill in event_required_skills}
+        return 0.0
 
-    matching_skills = volunteer_skills & event_required_skills
-    total_required_skills = len(event_required_skills)
-    
-    return (len(matching_skills) / total_required_skills) * 100 if total_required_skills > 0 else 0
+    normalized_volunteer = {skill.lower() for skill in volunteer_skills}
+    normalized_required = {skill.lower() for skill in event_required_skills}
 
+    matching_skills = normalized_volunteer & normalized_required
+    total_required = len(normalized_required)
+
+    return (len(matching_skills) / total_required) * 100 if total_required > 0 else 0.0
 
 
-def find_best_matches(event, max_matches=5):
-    """Find the best volunteer matches for an event."""
-    event_scores = []
-    
-    print("Finding matches for event:", event)  # Log event details
-    
-    for user in db['users']:
-        if 'skills' not in user:
+def find_best_matches(event: dict, max_matches: int = MAX_MATCHES) -> list[dict]:
+    """Find the best volunteer matches for an event using Supabase data."""
+    users = get_all_users()
+    scored_matches = []
+
+    logger.info("Finding matches for event: %s", event.get('eventName', 'unknown'))
+
+    for user in users:
+        user_skills = user.get('skills')
+        if not user_skills:
             continue
-        
-        # Log each user’s skills to debug matching
-        print("Checking user:", user['username'], "with skills:", user['skills'])
-        print("Event required skills:", event['requiredSkills'])
-        
-        score = calculate_match_score(user['skills'], event['requiredSkills'])
-        print("Calculated match score:", score)  # Debug score calculation
-        
-        if score > 50:  # Only consider matches above 50% compatibility
-            event_scores.append({
+
+        score = calculate_match_score(user_skills, event['requiredSkills'])
+        logger.debug("User %s scored %.1f for event %s",
+                      user['username'], score, event['eventName'])
+
+        if score > MATCH_THRESHOLD:
+            scored_matches.append({
                 'username': user['username'],
                 'score': score,
-                'email': user['email']
+                'email': user.get('email', '')
             })
-    
-    return sorted(event_scores, key=lambda x: x['score'], reverse=True)[:max_matches]
+
+    return sorted(scored_matches, key=lambda x: x['score'], reverse=True)[:max_matches]
 
 
+# --- Notification Helpers ---
 
-
-
-# Notification System Functions
-def create_notification(username, message, notification_type, related_id=None):
-    """Create a new notification for a user."""
-    if username not in db['notifications']:
-        db['notifications'][username] = []
-        
+def create_notification(username: str, message: str,
+                        notification_type: str, related_id: Optional[str] = None) -> dict:
+    """Create a new notification for a user in Supabase."""
     notification = {
-        'id': len(db['notifications'][username]) + 1,
+        'username': username,
         'message': message,
         'type': notification_type,
-        'timestamp': datetime.now().isoformat(),
         'read': False,
-        'related_id': related_id
+        'relatedId': related_id,
+        'timestamp': datetime.now(timezone.utc).isoformat()
     }
-    
-    db['notifications'][username].append(notification)
+    supabase.table('notifications').insert(notification).execute()
     return notification
 
-def check_upcoming_events(test_mode=False):
-    current_time = datetime.now()
-    print("Checking events:", db['events'])  # Add this line for debugging
-    for event in db['events']:
-        try:
-            event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
-            if current_time + timedelta(days=1) >= event_date >= current_time:
-                # Find and notify matching volunteers
-                matches = find_best_matches(event)
-                for match in matches:
-                    create_notification(
-                        match['username'],
-                        f"Reminder: {event['eventName']} is tomorrow!",
-                        'event_reminder',
-                        event['eventName']
-                    )
-        except ValueError:
-            continue  # Skip events with invalid dates
-    if test_mode:
-        return  # Ensure this returns when called in test mode
+
+def get_user_notifications(username: str) -> list[dict]:
+    """Fetch all notifications for a user from Supabase."""
+    response = supabase.table('notifications').select('*').eq('username', username).execute()
+    return response.data or []
 
 
-# Routes
+def mark_notifications_as_read(username: str, notification_ids: list) -> bool:
+    """Mark specific notifications as read in Supabase."""
+    for notification_id in notification_ids:
+        supabase.table('notifications') \
+            .update({'read': True}) \
+            .eq('username', username) \
+            .eq('id', notification_id) \
+            .execute()
+    return True
+
+
+# --- Routes ---
+
 @app.route('/register', methods=['POST'])
 def register():
+    """Register a new user."""
     try:
         data = request.json
         errors = validate_data(data, USER_SCHEMA)
@@ -168,9 +214,13 @@ def register():
         if get_user(data['username']):
             return create_response(error='User already exists', status=400)
 
+        hashed_password = bcrypt.hashpw(
+            data['password'].encode('utf-8'), bcrypt.gensalt()
+        ).decode('utf-8')
+
         user_info = {
             'username': data['username'],
-            'password': bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            'password': hashed_password,
             'email': data['email'],
             'skills': data.get('skills', []),
             'preferences': data.get('preferences', ''),
@@ -185,136 +235,159 @@ def register():
             status=201
         )
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Registration failed for user: %s", data.get('username', 'unknown'))
+        return create_response(error='Registration failed. Please try again.', status=500)
+
 
 @app.route('/login', methods=['POST'])
 def login():
+    """Authenticate a user."""
     try:
         data = request.json
         if not data.get('username') or not data.get('password'):
             return create_response(error='Username and password are required', status=400)
 
         user = get_user(data['username'])
-        if user and bcrypt.checkpw(data['password'].encode('utf-8'), user['password'].encode('utf-8')):
+        if user and bcrypt.checkpw(
+            data['password'].encode('utf-8'),
+            user['password'].encode('utf-8')
+        ):
             return create_response(message='Login successful')
+
         return create_response(error='Invalid credentials', status=401)
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Login failed")
+        return create_response(error='Login failed. Please try again.', status=500)
+
 
 @app.route('/eventform', methods=['GET', 'POST'])
 def handle_event():
+    """List all events (GET) or create a new event (POST)."""
     if request.method == 'GET':
-        events = supabase.table('events').select('*').execute().data
-        return create_response(data={'events': events})
-
-    elif request.method == 'POST':
         try:
-            data = request.json
-            errors = validate_data(data, EVENT_SCHEMA)
-            if errors:
-                return create_response(error=errors, status=400)
-
-            event = {
-                'eventName': data['eventName'],
-                'location': data['location'],
-                'requiredSkills': data['requiredSkills'],
-                'urgency': data['urgency'],
-                'eventDate': data['eventDate'],
-                'createdAt': datetime.now(timezone.utc).isoformat()
-            }
-            supabase.table('events').insert(event).execute()
-
-            return create_response(
-                data={'event': event},
-                message='Event created successfully',
-                status=201
-            )
+            events = get_all_events()
+            return create_response(data={'events': events})
         except Exception as e:
-            return create_response(error=str(e), status=500)
+            logger.exception("Failed to fetch events")
+            return create_response(error='Failed to fetch events.', status=500)
+
+    try:
+        data = request.json
+        errors = validate_data(data, EVENT_SCHEMA)
+        if errors:
+            return create_response(error=errors, status=400)
+
+        event = {
+            'eventName': data['eventName'],
+            'location': data['location'],
+            'requiredSkills': data['requiredSkills'],
+            'urgency': data['urgency'],
+            'eventDate': data['eventDate'],
+            'createdAt': datetime.now(timezone.utc).isoformat()
+        }
+        supabase.table('events').insert(event).execute()
+
+        return create_response(
+            data={'event': event},
+            message='Event created successfully',
+            status=201
+        )
+    except Exception as e:
+        logger.exception("Failed to create event")
+        return create_response(error='Failed to create event.', status=500)
+
 
 @app.route('/matches/event/<event_name>', methods=['GET'])
-def get_event_matches(event_name):
-    """Get matches for a specific event."""
+def get_event_matches(event_name: str):
+    """Get volunteer matches for a specific event."""
     try:
-        event_response = supabase.table('events').select("*").eq('eventName', event_name).execute()
-        event = event_response.data[0] if event_response.data else None
+        event = get_event_by_name(event_name)
         if not event:
             return create_response(error='Event not found', status=404)
-        
+
         matches = find_best_matches(event)
         return create_response(data={'matches': matches})
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Failed to find matches for event: %s", event_name)
+        return create_response(error='Failed to find matches.', status=500)
+
 
 @app.route('/matches/volunteer/<username>', methods=['GET'])
-def get_volunteer_matches(username):
+def get_volunteer_matches(username: str):
     """Get matching events for a volunteer."""
     try:
-        user_response = supabase.table('users').select("*").eq('username', username).execute()
-        user = user_response.data[0] if user_response.data else None
+        user = get_user(username)
         if not user:
             return create_response(error='User not found', status=404)
-            
+
+        events = get_all_events()
         matching_events = []
-        for event in db['events']:
-            score = calculate_match_score(user.get('skills', []), event['requiredSkills'])
-            if score > 50:
+
+        for event in events:
+            score = calculate_match_score(
+                user.get('skills', []),
+                event.get('requiredSkills', [])
+            )
+            if score > MATCH_THRESHOLD:
                 matching_events.append({
                     'event': event,
                     'matchScore': score
                 })
-                
+
         return create_response(data={'matches': matching_events})
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Failed to find matches for volunteer: %s", username)
+        return create_response(error='Failed to find matches.', status=500)
 
 
 @app.route('/notifications/<username>', methods=['GET'])
-def get_notifications(username):
+def get_notifications(username: str):
     """Get all notifications for a user."""
     try:
-        user_notifications = db['notifications'].get(username, [])
-        return create_response(data={'notifications': user_notifications})
+        notifications = get_user_notifications(username)
+        return create_response(data={'notifications': notifications})
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Failed to fetch notifications for: %s", username)
+        return create_response(error='Failed to fetch notifications.', status=500)
+
 
 @app.route('/notifications/<username>/mark-read', methods=['POST'])
-def mark_notifications_read(username):
-    """Mark notifications as read."""
+def mark_notifications_read(username: str):
+    """Mark specific notifications as read."""
     try:
         notification_ids = request.json.get('notification_ids', [])
-        if username not in db['notifications']:
-            return create_response(error='No notifications found', status=404)
-            
-        for notification in db['notifications'][username]:
-            if notification['id'] in notification_ids:
-                notification['read'] = True
-                
+        if not notification_ids:
+            return create_response(error='No notification IDs provided', status=400)
+
+        mark_notifications_as_read(username, notification_ids)
         return create_response(message='Notifications marked as read')
     except Exception as e:
-        return create_response(error=str(e), status=500)
+        logger.exception("Failed to mark notifications for: %s", username)
+        return create_response(error='Failed to update notifications.', status=500)
 
-# Example Route: Get Volunteer History
+
 @app.route('/volunteer/<username>/history', methods=['GET'])
-def get_volunteer_history(username):
+def get_volunteer_history(username: str):
+    """Get a volunteer's participation history."""
     try:
-        response = supabase.table('volunteerhistory').select("*").eq('username', username).execute()
+        response = supabase.table('volunteerhistory').select('*').eq('username', username).execute()
         if not response.data:
-            return jsonify({'error': 'User not found'}), 404
-        return jsonify({'username': username, 'history': response.data}), 200
+            return create_response(error='User not found', status=404)
+        return create_response(data={'username': username, 'history': response.data})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.exception("Failed to fetch history for: %s", username)
+        return create_response(error='Failed to fetch volunteer history.', status=500)
 
-# Example Route: Add Volunteer Event
+
 @app.route('/volunteer/<username>/history', methods=['POST'])
-def add_volunteer_event(username):
+def add_volunteer_event(username: str):
+    """Add an event to a volunteer's history."""
     try:
         data = request.json
-        # Ensure that user exists before adding history
-        user_response = supabase.table('users').select("*").eq('username', username).execute()
-        if not user_response.data:
-            return jsonify({'error': 'User not found'}), 404
-        
+        user = get_user(username)
+        if not user:
+            return create_response(error='User not found', status=404)
+
         event = {
             'username': username,
             'eventname': data.get('eventName'),
@@ -326,13 +399,18 @@ def add_volunteer_event(username):
             'participationstatus': data.get('participationStatus')
         }
         supabase.table('volunteerhistory').insert(event).execute()
-        return jsonify({'username': username, 'history': event}), 201
+        return create_response(
+            data={'username': username, 'history': event},
+            status=201
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.exception("Failed to add history for: %s", username)
+        return create_response(error='Failed to add volunteer event.', status=500)
+
 
 app.register_blueprint(reporting, url_prefix="/admin")
 
 
-# Start the server
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
