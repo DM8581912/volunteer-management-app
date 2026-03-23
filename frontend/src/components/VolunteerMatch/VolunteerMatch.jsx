@@ -1,44 +1,61 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./VolunteerMatch.module.css";
 import { toast } from "react-toastify";
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const VolunteerMatch = () => {
   const [selectedVolunteer, setSelectedVolunteer] = useState("");
   const [matchedEvents, setMatchedEvents] = useState([]);
+  const [volunteers, setVolunteers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Dummy data for volunteers
-  const volunteers = [
-    { id: 1, name: "John Doe" },
-    { id: 2, name: "Jane Smith" },
-    { id: 3, name: "Alice Johnson" },
-  ];
-
-  // Dummy function to simulate matching events
-  const matchVolunteer = (volunteerId) => {
-    // Dummy data for events based on the selected volunteer
-    const dummyEvents = {
-      1: [{ id: 1, event_name: "First Aid Workshop", location: "New York" }],
-      2: [{ id: 2, event_name: "Fundraising Gala", location: "Los Angeles" }],
-      3: [
-        { id: 3, event_name: "Community Clean-up", location: "San Francisco" },
-      ],
+  useEffect(() => {
+    const fetchVolunteers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/eventform`);
+        if (response.ok) {
+          const data = await response.json();
+          setVolunteers(data.events || []);
+        }
+      } catch (err) {
+        toast.error("Failed to load data");
+      }
     };
+    fetchVolunteers();
+  }, []);
 
-    // Set the matched events for the selected volunteer
-    setMatchedEvents(dummyEvents[volunteerId] || []);
-  };
-
-  const handleMatch = (e) => {
+  const handleMatch = async (e) => {
     e.preventDefault();
 
-    // Ensure a volunteer is selected
     if (!selectedVolunteer) {
       toast.error("Please select a volunteer");
       return;
     }
 
-    // Simulate the matching logic
-    matchVolunteer(selectedVolunteer);
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/matches/volunteer/${selectedVolunteer}`
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to find matches");
+      }
+
+      const data = await response.json();
+      setMatchedEvents(data.matches || []);
+
+      if (!data.matches || data.matches.length === 0) {
+        toast.info("No matching events found for this volunteer");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      setMatchedEvents([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,26 +63,20 @@ const VolunteerMatch = () => {
       <h1>Volunteer Matching Form</h1>
 
       <form onSubmit={handleMatch} className={styles.form}>
-        <label htmlFor="volunteer" className={styles.label}>
+        <label htmlFor="volunteer_id" className={styles.label}>
           Select Volunteer:
         </label>
-        <select
-          name="volunteer_id"
+        <input
+          type="text"
           id="volunteer_id"
           value={selectedVolunteer}
           onChange={(e) => setSelectedVolunteer(e.target.value)}
           className={styles.select}
-        >
-          <option value="">--Select a Volunteer--</option>
-          {volunteers.map((volunteer) => (
-            <option key={volunteer.id} value={volunteer.id}>
-              {volunteer.name}
-            </option>
-          ))}
-        </select>
+          placeholder="Enter volunteer username"
+        />
 
-        <button type="submit" className={styles.button}>
-          Match Volunteer
+        <button type="submit" className={styles.button} disabled={isLoading}>
+          {isLoading ? "Matching..." : "Match Volunteer"}
         </button>
       </form>
 
@@ -74,9 +85,10 @@ const VolunteerMatch = () => {
 
         {matchedEvents.length > 0 ? (
           <ul className={styles.eventsList}>
-            {matchedEvents.map((event) => (
-              <li key={event.id} className={styles.eventItem}>
-                {event.event_name} (Location: {event.location})
+            {matchedEvents.map((match, index) => (
+              <li key={match.event?.id || index} className={styles.eventItem}>
+                {match.event?.eventName} (Location: {match.event?.location}) -
+                Match Score: {Math.round(match.matchScore)}%
               </li>
             ))}
           </ul>

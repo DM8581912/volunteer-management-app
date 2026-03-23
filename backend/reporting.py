@@ -1,27 +1,27 @@
-from flask import Blueprint, request, jsonify
+import logging
+import csv
+import os
 from io import StringIO, BytesIO
+from flask import Blueprint, request, jsonify
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-import csv
 from supabase import create_client
-import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Initialize Supabase client
+logger = logging.getLogger(__name__)
+
 supabase = create_client(
     os.getenv('SUPABASE_URL'),
     os.getenv('SUPABASE_KEY')
 )
 
-# Create the blueprint
 reporting = Blueprint('reporting', __name__)
 
-# Helper Functions
+
 def generate_csv(data, headers):
-    """Generate a CSV file from data."""
+    """Generate a CSV string from row data and headers."""
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow(headers)
@@ -29,45 +29,61 @@ def generate_csv(data, headers):
     output.seek(0)
     return output.getvalue()
 
+
 def generate_pdf(data, headers, title):
-    """Generate a PDF file from data."""
+    """Generate a PDF document from row data with headers and title."""
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=letter)
     pdf.setTitle(title)
 
-    # Add title
     pdf.drawString(100, 750, title)
 
-    # Add table headers
-    y = 720
-    pdf.drawString(50, y, " | ".join(headers))
-    y -= 20
+    y_position = 720
+    pdf.drawString(50, y_position, " | ".join(headers))
+    y_position -= 20
 
-    # Add table rows
     for row in data:
-        pdf.drawString(50, y, " | ".join(map(str, row)))
-        y -= 20
-        if y < 50:  # Add a new page if content exceeds the current page
+        pdf.drawString(50, y_position, " | ".join(map(str, row)))
+        y_position -= 20
+        if y_position < 50:
             pdf.showPage()
-            y = 750
+            y_position = 750
 
     pdf.save()
     buffer.seek(0)
     return buffer.getvalue()
 
-# Reporting Route for Events
+
+def build_report_response(data, headers, title, default_filename):
+    """Build a CSV or PDF response based on the format query parameter."""
+    report_format = request.args.get('format', 'csv').lower()
+
+    if report_format == 'csv':
+        csv_data = generate_csv(data, headers)
+        return csv_data, 200, {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': f'attachment; filename={default_filename}.csv'
+        }
+    elif report_format == 'pdf':
+        pdf_data = generate_pdf(data, headers, title)
+        return pdf_data, 200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': f'attachment; filename={default_filename}.pdf'
+        }
+    else:
+        return jsonify({"error": "Unsupported format. Use 'csv' or 'pdf'."}), 400
+
+
 @reporting.route('/reports/events', methods=['GET'])
 def events_report():
-    """Generate a report for all events in the Supabase database."""
+    """Generate a report for all events."""
     try:
-        # Fetch events from Supabase
         events_response = supabase.table('events').select("*").execute()
         events = events_response.data
 
         if not events:
             return jsonify({"error": "No events found"}), 404
 
-        # Prepare report data
         headers = ["Event Name", "Location", "Required Skills", "Urgency", "Event Date", "Created At"]
         report_data = [
             [
@@ -81,37 +97,27 @@ def events_report():
             for event in events
         ]
 
-        # Determine format from query parameters
-        report_format = request.args.get('format', 'csv').lower()
-
-        if report_format == 'csv':
-            csv_data = generate_csv(report_data, headers)
-            return csv_data, 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=events_report.csv'}
-        elif report_format == 'pdf':
-            pdf_data = generate_pdf(report_data, headers, "Events Report")
-            return pdf_data, 200, {'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename=events_report.pdf'}
-        else:
-            return jsonify({"error": "Unsupported format. Use 'csv' or 'pdf'."}), 400
+        return build_report_response(report_data, headers, "Events Report", "events_report")
 
     except Exception as e:
+        logger.error("Failed to generate events report: %s", e)
         return jsonify({"error": str(e)}), 500
-    
-# Reporting Route for Volunteer History
+
+
 @reporting.route('/reports/volunteerhistory', methods=['GET'])
 def volunteer_history_report():
-    """Generate a report for all volunteer history in the Supabase database."""
+    """Generate a report for all volunteer history."""
     try:
-        # Fetch volunteer history from Supabase
         volunteer_response = supabase.table('volunteerhistory').select("*").execute()
         volunteer_history = volunteer_response.data
 
         if not volunteer_history:
             return jsonify({"error": "No volunteer history found"}), 404
 
-        # Prepare report data
         headers = [
             "ID", "Username", "Event ID", "Date Volunteered", "Created At", "Hours Contributed",
-            "Required Skills", "Urgency", "Feedback", "Description", "Event Name", "Location", "Participation Status"
+            "Required Skills", "Urgency", "Feedback", "Description", "Event Name", "Location",
+            "Participation Status"
         ]
         report_data = [
             [
@@ -121,7 +127,7 @@ def volunteer_history_report():
                 entry.get('datevolunteered', 'N/A'),
                 entry.get('createdat', 'N/A'),
                 entry.get('hourscontributed', 'N/A'),
-                ", ".join(entry.get('requiredskills', [])),
+                ", ".join(entry.get('requiredskills', []) or []),
                 entry.get('urgency', 'N/A'),
                 entry.get('feedback', 'N/A'),
                 entry.get('description', 'N/A'),
@@ -132,20 +138,10 @@ def volunteer_history_report():
             for entry in volunteer_history
         ]
 
-        # Determine format from query parameters
-        report_format = request.args.get('format', 'csv').lower()
-
-        if report_format == 'csv':
-            csv_data = generate_csv(report_data, headers)
-            return csv_data, 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=volunteerhistory_report.csv'}
-        elif report_format == 'pdf':
-            pdf_data = generate_pdf(report_data, headers, "Volunteer History Report")
-            return pdf_data, 200, {'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename=volunteerhistory_report.pdf'}
-        else:
-            return jsonify({"error": "Unsupported format. Use 'csv' or 'pdf'."}), 400
+        return build_report_response(
+            report_data, headers, "Volunteer History Report", "volunteerhistory_report"
+        )
 
     except Exception as e:
+        logger.error("Failed to generate volunteer history report: %s", e)
         return jsonify({"error": str(e)}), 500
-
-    
-  
