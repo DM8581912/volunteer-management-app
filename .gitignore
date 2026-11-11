@@ -1,6 +1,36 @@
-# Ignore Python virtual environment and cache
+# Dependencies
+node_modules/
+
+# Python virtual environments
 venv/
+.venv/
+env/
+myenv/
+
+# Python cache and test artifacts
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 .coverage
+htmlcov/
+
+# Environment files (keep the committed .example templates)
 .env
+.env.*
+!.env.example
+
+# Build output
+build/
+dist/
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
