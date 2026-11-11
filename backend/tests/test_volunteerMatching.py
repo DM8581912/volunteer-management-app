@@ -202,13 +202,21 @@
 
 # if __name__ == '__main__':
 #     unittest.main()
-import unittest
-import json
-from dotenv import load_dotenv
 import os
+import unittest
 
-# Load environment variables explicitly for testing
+from dotenv import load_dotenv
+
+# These are integration tests that talk to a real Supabase project.
+# They are skipped unless SUPABASE_URL and SUPABASE_KEY are set
+# (in the environment or in backend/.env). See backend/.env.example.
 load_dotenv()
+if not (os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY")):
+    raise unittest.SkipTest(
+        "SUPABASE_URL and SUPABASE_KEY are not set; skipping Supabase integration tests"
+    )
+
+import json
 
 from app import app, supabase, find_best_matches
 

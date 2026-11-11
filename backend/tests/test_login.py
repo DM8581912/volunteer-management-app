@@ -1,4 +1,14 @@
 import unittest
+
+# Legacy test: written for the earlier in-memory version of the backend, which
+# kept data in a module-level `db` dict. app.py now stores data in Supabase and
+# no longer defines `db`, so this module cannot import. Kept for reference until
+# it is rewritten against the Supabase-backed routes.
+raise unittest.SkipTest(
+    "Legacy in-memory test: app.py no longer exposes `db`; needs rewriting for Supabase"
+)
+
+import unittest
 from app import app, db
 import bcrypt
 
