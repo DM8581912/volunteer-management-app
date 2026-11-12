@@ -1,7 +1,18 @@
-import unittest
-from supabase import create_client, Client
 import os
+import unittest
+
 from dotenv import load_dotenv
+
+# These are integration tests that talk to a real Supabase project.
+# They are skipped unless SUPABASE_URL and SUPABASE_KEY are set
+# (in the environment or in backend/.env). See backend/.env.example.
+load_dotenv()
+if not (os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY")):
+    raise unittest.SkipTest(
+        "SUPABASE_URL and SUPABASE_KEY are not set; skipping Supabase integration tests"
+    )
+
+from supabase import create_client, Client
 from hashlib import sha256
 from unittest.mock import patch, MagicMock
 

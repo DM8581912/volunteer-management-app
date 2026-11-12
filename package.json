@@ -2,15 +2,10 @@
   "name": "volunteer-management-app",
   "version": "1.0.0",
   "private": true,
+  "description": "Convenience scripts that run the React frontend in ./frontend",
   "scripts": {
     "start": "cd frontend && npm start",
     "build": "cd frontend && npm run build",
-    "test": "cd frontend && npm test",
-    "eject": "cd frontend && npm run eject"
-  },
-  "dependencies": {
-    "react-datepicker": "^7.3.0",
-    "react-router-dom": "^6.26.2",
-    "react-select": "^5.8.0"
+    "test": "cd frontend && npm test"
   }
 }

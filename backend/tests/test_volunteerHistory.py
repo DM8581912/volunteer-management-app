@@ -146,9 +146,23 @@
 
 # if __name__ == '__main__':
 #     unittest.main()
+import os
 import unittest
+
+from dotenv import load_dotenv
+
+# These are integration tests that talk to a real Supabase project.
+# They are skipped unless SUPABASE_URL and SUPABASE_KEY are set
+# (in the environment or in backend/.env). See backend/.env.example.
+load_dotenv()
+if not (os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY")):
+    raise unittest.SkipTest(
+        "SUPABASE_URL and SUPABASE_KEY are not set; skipping Supabase integration tests"
+    )
+
 from flask import json
 from supabase import create_client, Client
+
 from app import app
 
 
@@ -156,8 +170,8 @@ class VolunteerHistoryTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Sets up the Supabase client for the test cases."""
-        cls.url = "https://lvbuiiuellruhmtaaonm.supabase.co"  # Supabase URL
-        cls.key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2YnVpaXVlbGxydWhtdGFhb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0MjU4NjMsImV4cCI6MjA0NjAwMTg2M30.mMM-eBiXIAPupVJb8mTN7LA0r1Id1cL1BGXKc0McV08"  # Supabase anon key
+        cls.url = os.environ["SUPABASE_URL"]
+        cls.key = os.environ["SUPABASE_KEY"]
         cls.supabase: Client = create_client(cls.url, cls.key)
 
         cls.app = app.test_client()
