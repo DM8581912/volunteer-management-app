@@ -136,7 +136,13 @@ This is a course project and some parts were left mid-migration from in-memory s
 
 ## My role
 
-> **TODO (Adam): fill in this section.** Describe the parts you built, in your own words. Do not leave this placeholder in the published README.
+Adam Kaddour-Djebbar created the repository and was its most active contributor. His work:
+
+- **Frontend:** the login, registration and profile pages in React, with form validation and CSS Modules.
+- **Backend:** the registration, login and user-profile management endpoints in Flask, with bcrypt password hashing.
+- **Database:** the initial PostgreSQL schema (`database/schema.sql`) and the Supabase integration layer (`backend/supabaseClient.py`).
+- **Testing:** unit tests for login, profile management, user profiles and credentials, raising backend test coverage to 83% in November 2024.
+- **2026 cleanup:** the portfolio polish in this README (dependency cleanup, environment-based configuration, working test suite and setup docs).
 
 ## Team and credits
 
@@ -144,7 +150,7 @@ Built by a four-person team. Contributors are listed as they appear in the commi
 
 | Contributor | GitHub | Commits |
 |-------------|--------|---------|
-| Repo owner | this account | 24 |
+| Adam Kaddour-Djebbar | [@DM8581912](https://github.com/DM8581912) | 24 |
 | daviddinh1 | [@daviddinh1](https://github.com/daviddinh1) | 21 |
 | Kevin21 | [@KevinVu21](https://github.com/KevinVu21) | 17 |
 | Fufuos | [@Fufuos](https://github.com/Fufuos) | 10 |
